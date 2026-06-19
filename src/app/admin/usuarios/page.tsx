@@ -21,8 +21,11 @@ export default async function AdminUsersPage() {
       <AdminCreateUserForm households={householdOptions} />
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between gap-3">
           <CardTitle>Usuarios</CardTitle>
+          <a href="/admin/usuarios/export" className="rounded-md border px-3 py-1.5 text-sm font-medium hover:bg-secondary">
+            Exportar CSV
+          </a>
         </CardHeader>
         <CardContent className="space-y-3">
           {users.map((user) => (
