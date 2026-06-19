@@ -1,5 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { InvitationStatusBadge } from "@/components/ui/status-badges";
+import { adminCancelInvitationAction } from "@/server/actions/invitations.actions";
 import { getAdminInvitations } from "@/server/queries/admin";
 import { formatDateTime } from "@/lib/utils";
 
@@ -27,6 +29,12 @@ export default async function AdminInvitationsPage() {
             <p className="mt-1 text-sm text-muted-foreground">
               {invitation.tipo_visita.replaceAll("_", " ")} · {formatDateTime(invitation.fecha_inicio)} - {formatDateTime(invitation.fecha_fin)}
             </p>
+            {invitation.estatus === "VIGENTE" ? (
+              <form action={adminCancelInvitationAction} className="mt-2">
+                <input type="hidden" name="id" value={invitation.id} />
+                <Button variant="secondary" size="sm">Cancelar invitacion</Button>
+              </form>
+            ) : null}
           </div>
         ))}
         {invitations.length === 0 ? <p className="text-sm text-muted-foreground">Sin invitaciones.</p> : null}

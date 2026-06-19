@@ -44,3 +44,9 @@ export async function cancelInvitationAction(formData: FormData) {
   await cancelInvitation(String(formData.get("id") ?? ""));
   revalidatePath("/app/invitaciones");
 }
+
+// Cancelacion desde administracion (el servicio valida rol y fraccionamiento).
+export async function adminCancelInvitationAction(formData: FormData) {
+  await cancelInvitation(String(formData.get("id") ?? ""));
+  revalidatePath("/admin/invitaciones");
+}
