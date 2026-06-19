@@ -336,6 +336,17 @@ class SupabaseInvitationRepository implements InvitationRepository {
     return data;
   }
 
+  async markUsedIfVigente(id: string) {
+    const { data, error } = await this.supabase
+      .from("invitaciones")
+      .update({ estatus: "USADA" })
+      .eq("id", id)
+      .eq("estatus", "VIGENTE")
+      .select("id");
+    if (error) raise(error.message);
+    return (data?.length ?? 0) > 0;
+  }
+
   async cancel(id: string, actorId: string) {
     return this.updateStatus(id, "CANCELADA", actorId);
   }

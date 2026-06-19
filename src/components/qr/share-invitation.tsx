@@ -1,6 +1,8 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Copy, Send } from "lucide-react";
+import QRCode from "qrcode";
 import { Button } from "@/components/ui/button";
 import { formatDateTime } from "@/lib/utils";
 
@@ -8,19 +10,58 @@ export function ShareInvitation({
   fractionationName,
   visitorName,
   numericCode,
-  expiresAt
+  expiresAt,
+  qrValue
 }: {
   fractionationName: string;
   visitorName: string;
   numericCode: string;
   expiresAt: string;
+  // Valor opaco del QR (ej. "access:..."). Si se provee, se intenta compartir la
+  // imagen del QR ademas del texto.
+  qrValue?: string;
 }) {
-  const text = `Invitacion para ${fractionationName}\nVisitante: ${visitorName}\nVigencia: hasta ${formatDateTime(expiresAt)}\nCodigo numerico: ${numericCode}\nPresenta este QR o codigo numerico en caseta.`;
+  const [qrFile, setQrFile] = useState<File | null>(null);
+
+  const text = `Te comparto tu acceso a ${fractionationName}.\nVisitante: ${visitorName}\nPresenta este QR en caseta. Si no se puede escanear, proporciona el codigo: ${numericCode}.\nVigente hasta: ${formatDateTime(expiresAt)}.`;
+
+  useEffect(() => {
+    if (!qrValue) {
+      return;
+    }
+    let cancelled = false;
+    QRCode.toDataURL(qrValue, { width: 320, margin: 2, errorCorrectionLevel: "M" })
+      .then(async (dataUrl) => {
+        const blob = await (await fetch(dataUrl)).blob();
+        if (!cancelled) {
+          setQrFile(new File([blob], "invitacion-qr.png", { type: "image/png" }));
+        }
+      })
+      .catch(() => setQrFile(null));
+    return () => {
+      cancelled = true;
+    };
+  }, [qrValue]);
 
   async function share() {
+    // Web Share nivel 2: compartir la imagen del QR junto al texto si el
+    // dispositivo lo permite (típico en celulares).
+    if (qrFile && navigator.canShare?.({ files: [qrFile] })) {
+      try {
+        await navigator.share({ title: "Invitacion de acceso", text, files: [qrFile] });
+        return;
+      } catch {
+        // El usuario canceló o el navegador no aceptó archivos; seguimos con texto.
+      }
+    }
+
     if (navigator.share) {
-      await navigator.share({ title: "Invitacion de acceso", text });
-      return;
+      try {
+        await navigator.share({ title: "Invitacion de acceso", text });
+        return;
+      } catch {
+        // cae al fallback de WhatsApp web
+      }
     }
 
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank", "noopener,noreferrer");

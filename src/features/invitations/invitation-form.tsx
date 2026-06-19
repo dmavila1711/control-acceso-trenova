@@ -45,6 +45,7 @@ export function InvitationForm() {
               visitorName={state.data.visitante}
               numericCode={state.data.numericCode}
               expiresAt={state.data.fechaFin}
+              qrValue={state.data.qrPayload}
             />
             <Link
               href="/app/invitaciones"

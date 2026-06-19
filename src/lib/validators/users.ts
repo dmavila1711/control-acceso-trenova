@@ -34,9 +34,36 @@ export const createUserSchema = z
     }
   });
 
+// Alta desde administracion: crea la cuenta de acceso (Auth) y el perfil en un
+// solo paso. No incluye auth_user_id (lo genera el servidor) ni SUPERADMIN.
+export const createUserWithAccountSchema = z
+  .object({
+    nombre: z.string().trim().min(2, "Escribe el nombre."),
+    email: z.string().trim().email("Escribe un email valido."),
+    password: z.string().min(8, "La contrasena debe tener al menos 8 caracteres."),
+    rol: z.enum(["COLONO", "GUARDIA", "ADMINISTRACION"], {
+      required_error: "Selecciona el rol."
+    }),
+    domicilio_id: optionalUuid
+  })
+  .superRefine((value, ctx) => {
+    if (value.rol === "COLONO" && !value.domicilio_id) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["domicilio_id"],
+        message: "El colono requiere domicilio."
+      });
+    }
+  });
+
 export const updateUserStatusSchema = z.object({
   id: z.string().uuid(),
   estatus: z.enum(["ACTIVO", "INACTIVO"])
 });
 
+export const resetUserPasswordSchema = z.object({
+  id: z.string().uuid("Usuario invalido.")
+});
+
 export type CreateUserInput = z.infer<typeof createUserSchema>;
+export type CreateUserWithAccountInput = z.infer<typeof createUserWithAccountSchema>;

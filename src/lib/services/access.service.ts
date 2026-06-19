@@ -11,8 +11,20 @@ import {
   validateQrSchema
 } from "@/lib/validators/access";
 import { hashNumericCode, hashQrToken, parseQrPayload } from "@/lib/qr/tokens";
+import {
+  SECURITY_EVENT,
+  countRecentFailures,
+  isRateLimited,
+  logSecurityEvent
+} from "@/lib/security/events";
 import type { InvitationRow } from "@/types/database";
 import type { AccessResult, InvitationValidationResult, ValidationMethod } from "@/types/domain";
+
+const RATE_LIMITED_RESULT: InvitationValidationResult = {
+  status: "INVALIDA",
+  resultado: "OTRO",
+  message: "Demasiados intentos. Espera un momento e intenta de nuevo."
+};
 
 async function evaluateInvitation(repositories: Repositories, invitation: InvitationRow | null): Promise<InvitationValidationResult> {
   if (!invitation) {
@@ -116,6 +128,22 @@ export async function validateQr(input: unknown) {
     throw new ForbiddenError("Tu usuario no tiene fraccionamiento asignado.");
   }
 
+  const failures = await countRecentFailures({
+    fraccionamientoId: actor.fraccionamiento_id,
+    actorUserId: actor.id
+  });
+  if (isRateLimited(failures.guardia, failures.fraccionamiento)) {
+    await logSecurityEvent({
+      fraccionamientoId: actor.fraccionamiento_id,
+      actorUserId: actor.id,
+      actorRole: actor.rol,
+      eventType: SECURITY_EVENT.RATE_LIMIT_QR,
+      severity: "WARNING",
+      metadata: toJson({ ...failures })
+    });
+    return RATE_LIMITED_RESULT;
+  }
+
   const token = parseQrPayload(parsed.qrPayload);
   const invitation = token
     ? await repositories.invitations.findByQrHash(hashQrToken(token), actor.fraccionamiento_id)
@@ -131,6 +159,16 @@ export async function validateQr(input: unknown) {
       result.resultado,
       result.message
     );
+    await logSecurityEvent({
+      fraccionamientoId: actor.fraccionamiento_id,
+      actorUserId: actor.id,
+      actorRole: actor.rol,
+      eventType: SECURITY_EVENT.INVALID_QR_ATTEMPT,
+      severity: "INFO",
+      entityType: "invitaciones",
+      entityId: invitation?.id ?? null,
+      metadata: toJson({ resultado: result.resultado })
+    });
   }
 
   await auditAction({
@@ -154,6 +192,22 @@ export async function validateNumericCode(input: unknown) {
     throw new ForbiddenError("Tu usuario no tiene fraccionamiento asignado.");
   }
 
+  const failures = await countRecentFailures({
+    fraccionamientoId: actor.fraccionamiento_id,
+    actorUserId: actor.id
+  });
+  if (isRateLimited(failures.guardia, failures.fraccionamiento)) {
+    await logSecurityEvent({
+      fraccionamientoId: actor.fraccionamiento_id,
+      actorUserId: actor.id,
+      actorRole: actor.rol,
+      eventType: SECURITY_EVENT.RATE_LIMIT_CODE,
+      severity: "WARNING",
+      metadata: toJson({ ...failures })
+    });
+    return RATE_LIMITED_RESULT;
+  }
+
   const invitation = await repositories.invitations.findByNumericHash(
     hashNumericCode(parsed.code),
     actor.fraccionamiento_id
@@ -169,6 +223,16 @@ export async function validateNumericCode(input: unknown) {
       result.resultado,
       result.message
     );
+    await logSecurityEvent({
+      fraccionamientoId: actor.fraccionamiento_id,
+      actorUserId: actor.id,
+      actorRole: actor.rol,
+      eventType: SECURITY_EVENT.INVALID_CODE_ATTEMPT,
+      severity: "INFO",
+      entityType: "invitaciones",
+      entityId: invitation?.id ?? null,
+      metadata: toJson({ resultado: result.resultado })
+    });
   }
 
   await auditAction({
@@ -198,6 +262,15 @@ export async function decideAccess(input: unknown) {
   }
 
   if (invitation.fraccionamiento_id !== actor.fraccionamiento_id) {
+    await logSecurityEvent({
+      fraccionamientoId: actor.fraccionamiento_id,
+      actorUserId: actor.id,
+      actorRole: actor.rol,
+      eventType: SECURITY_EVENT.CROSS_TENANT_ATTEMPT,
+      severity: "CRITICAL",
+      entityType: "invitaciones",
+      entityId: invitation.id
+    });
     throw new ForbiddenError();
   }
 
@@ -211,10 +284,21 @@ export async function decideAccess(input: unknown) {
   // invitacion sigue vigente. Asi evitamos permitir invitaciones canceladas,
   // expiradas o ya usadas aunque se llame a la accion directamente.
   const resultado = parsed.resultado;
-  if (parsed.resultado === "PERMITIDO") {
+  const esUnSoloUso = invitation.tipo_autorizacion !== "VISITA_FRECUENTE";
+
+  if (resultado === "PERMITIDO") {
     const evaluation = await evaluateInvitation(repositories, invitation);
     if (evaluation.status === "INVALIDA") {
       throw new AppError(evaluation.message);
+    }
+
+    // Para invitaciones de un solo uso, reclamamos de forma atomica: solo un
+    // guardia puede marcarla USADA. Si otro la uso al mismo tiempo, bloqueamos.
+    if (esUnSoloUso) {
+      const claimed = await repositories.invitations.markUsedIfVigente(invitation.id);
+      if (!claimed) {
+        throw new AppError("La invitacion ya fue utilizada.");
+      }
     }
   }
 
@@ -230,10 +314,6 @@ export async function decideAccess(input: unknown) {
     observaciones: parsed.observaciones || null,
     resolved_at: new Date().toISOString()
   });
-
-  if (resultado === "PERMITIDO" && invitation.tipo_autorizacion !== "VISITA_FRECUENTE") {
-    await repositories.invitations.updateStatus(invitation.id, "USADA");
-  }
 
   if (resultado === "RECHAZADO") {
     await repositories.invitations.updateStatus(invitation.id, "RECHAZADA_EN_CASETA");

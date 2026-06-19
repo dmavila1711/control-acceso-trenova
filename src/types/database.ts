@@ -181,6 +181,21 @@ export type MessageEventRow = {
   created_at: string;
 };
 
+export type SecurityEventRow = {
+  id: string;
+  fraccionamiento_id: string | null;
+  actor_user_id: string | null;
+  actor_role: string | null;
+  event_type: string;
+  severity: "INFO" | "WARNING" | "CRITICAL";
+  entity_type: string | null;
+  entity_id: string | null;
+  metadata: Json | null;
+  ip_address: string | null;
+  user_agent: string | null;
+  created_at: string;
+};
+
 export type Database = {
   public: {
     Tables: {
@@ -269,6 +284,12 @@ export type Database = {
         Partial<Pick<MessageEventRow, "id" | "created_at">> &
           Pick<MessageEventRow, "canal" | "evento" | "estatus"> &
           Partial<Omit<MessageEventRow, "id" | "canal" | "evento" | "estatus" | "created_at">>
+      >;
+      eventos_seguridad: TableDef<
+        SecurityEventRow,
+        Partial<Pick<SecurityEventRow, "id" | "created_at" | "severity">> &
+          Pick<SecurityEventRow, "event_type"> &
+          Partial<Omit<SecurityEventRow, "id" | "event_type" | "created_at" | "severity">>
       >;
     } & Record<string, GenericTableForSchema>;
     Views: Record<string, GenericViewForSchema>;

@@ -55,6 +55,7 @@ export default async function InvitationDetailPage({ params }: { params: Promise
               visitorName={invitation.nombre_visitante}
               numericCode={numericCode}
               expiresAt={invitation.fecha_fin}
+              qrValue={qrPayload ?? undefined}
             />
           ) : null}
           {invitation.estatus === "VIGENTE" ? (

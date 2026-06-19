@@ -221,6 +221,8 @@ for each row execute function public.touch_updated_at();
 create or replace function public.ensure_fractionation_config()
 returns trigger
 language plpgsql
+security definer
+set search_path = public
 as $$
 begin
   insert into public.configuracion_fraccionamiento (fraccionamiento_id)

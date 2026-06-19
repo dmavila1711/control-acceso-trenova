@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { ImportHouseholdsForm } from "@/features/admin/import-households-form";
 import { createHouseholdAction, updateHouseholdStatusAction } from "@/server/actions/admin.actions";
 import { getAdminHouseholds } from "@/server/queries/admin";
 import { compactAddress } from "@/lib/utils";
@@ -12,34 +13,38 @@ export default async function AdminHouseholdsPage() {
 
   return (
     <div className="grid gap-5 lg:grid-cols-[380px_1fr]">
-      <Card>
-        <CardHeader>
-          <CardTitle>Crear domicilio</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form action={createHouseholdAction} className="space-y-3">
-            <div className="space-y-2">
-              <Label htmlFor="calle">Calle</Label>
-              <Input id="calle" name="calle" required />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
+      <div className="space-y-5">
+        <Card>
+          <CardHeader>
+            <CardTitle>Crear domicilio</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form action={createHouseholdAction} className="space-y-3">
               <div className="space-y-2">
-                <Label htmlFor="numero_exterior">Exterior</Label>
-                <Input id="numero_exterior" name="numero_exterior" required />
+                <Label htmlFor="calle">Calle</Label>
+                <Input id="calle" name="calle" required />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="numero_exterior">Exterior</Label>
+                  <Input id="numero_exterior" name="numero_exterior" required />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="numero_interior">Interior</Label>
+                  <Input id="numero_interior" name="numero_interior" />
+                </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="numero_interior">Interior</Label>
-                <Input id="numero_interior" name="numero_interior" />
+                <Label htmlFor="referencia">Referencia</Label>
+                <Textarea id="referencia" name="referencia" />
               </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="referencia">Referencia</Label>
-              <Textarea id="referencia" name="referencia" />
-            </div>
-            <Button className="w-full">Crear domicilio</Button>
-          </form>
-        </CardContent>
-      </Card>
+              <Button className="w-full">Crear domicilio</Button>
+            </form>
+          </CardContent>
+        </Card>
+
+        <ImportHouseholdsForm />
+      </div>
 
       <Card>
         <CardHeader>

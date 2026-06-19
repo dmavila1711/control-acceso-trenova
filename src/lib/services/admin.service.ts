@@ -1,11 +1,29 @@
 import { auditAction } from "@/lib/audit/audit";
-import { AppError, ForbiddenError } from "@/lib/errors";
+import { AppError, ForbiddenError, errorMessage } from "@/lib/errors";
 import { getServiceContext } from "@/lib/services/context";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { toJson } from "@/lib/utils";
 import { createHouseholdSchema, updateHouseholdStatusSchema } from "@/lib/validators/households";
 import { createMessageSchema } from "@/lib/validators/messages";
 import { createNoticeSchema } from "@/lib/validators/notices";
-import { createUserSchema, updateUserStatusSchema } from "@/lib/validators/users";
+import { randomBytes } from "node:crypto";
+import {
+  createUserSchema,
+  createUserWithAccountSchema,
+  resetUserPasswordSchema,
+  updateUserStatusSchema
+} from "@/lib/validators/users";
+
+// Contrasena temporal legible (sin caracteres ambiguos) generada server-side.
+function generateTempPassword(): string {
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
+  const bytes = randomBytes(12);
+  let out = "";
+  for (let i = 0; i < bytes.length; i += 1) {
+    out += alphabet[bytes[i] % alphabet.length];
+  }
+  return out;
+}
 
 export async function createHousehold(input: unknown) {
   const parsed = createHouseholdSchema.parse(input);
@@ -34,6 +52,59 @@ export async function createHousehold(input: unknown) {
   });
 
   return household;
+}
+
+export type ImportResult = { inserted: number; errors: { row: number; message: string }[] };
+
+export async function importHouseholds(rows: unknown): Promise<ImportResult> {
+  const { actor, repositories } = await getServiceContext(["ADMINISTRACION"]);
+
+  if (!actor.fraccionamiento_id) {
+    throw new ForbiddenError("Tu usuario no tiene fraccionamiento asignado.");
+  }
+  if (!Array.isArray(rows)) {
+    throw new AppError("Formato de importacion invalido.");
+  }
+  if (rows.length === 0) {
+    throw new AppError("No hay filas para importar.");
+  }
+  if (rows.length > 500) {
+    throw new AppError("Maximo 500 domicilios por importacion.");
+  }
+
+  const errors: { row: number; message: string }[] = [];
+  let inserted = 0;
+
+  for (let i = 0; i < rows.length; i += 1) {
+    const parsed = createHouseholdSchema.safeParse(rows[i]);
+    if (!parsed.success) {
+      errors.push({ row: i + 1, message: parsed.error.issues[0]?.message ?? "Fila invalida." });
+      continue;
+    }
+
+    try {
+      await repositories.households.create({
+        fraccionamiento_id: actor.fraccionamiento_id,
+        calle: parsed.data.calle,
+        numero_exterior: parsed.data.numero_exterior,
+        numero_interior: parsed.data.numero_interior || null,
+        referencia: parsed.data.referencia || null
+      });
+      inserted += 1;
+    } catch (error) {
+      errors.push({ row: i + 1, message: errorMessage(error) });
+    }
+  }
+
+  await auditAction({
+    actor,
+    action: "DOMICILIOS_IMPORTAR",
+    entityType: "domicilios",
+    fraccionamientoId: actor.fraccionamiento_id,
+    metadata: toJson({ inserted, errores: errors.length, total: rows.length })
+  });
+
+  return { inserted, errors };
 }
 
 export async function updateHouseholdStatus(input: unknown) {
@@ -113,6 +184,107 @@ export async function createUser(input: unknown) {
   });
 
   return user;
+}
+
+export async function createUserWithAccount(input: unknown) {
+  const parsed = createUserWithAccountSchema.parse(input);
+  const { actor, repositories } = await getServiceContext(["ADMINISTRACION"]);
+
+  if (!actor.fraccionamiento_id) {
+    throw new ForbiddenError("Tu usuario no tiene fraccionamiento asignado.");
+  }
+
+  // El domicilio (para COLONO) debe pertenecer al fraccionamiento del admin, y se
+  // valida el tope de colonos activos antes de crear la cuenta de acceso.
+  if (parsed.rol === "COLONO" && parsed.domicilio_id) {
+    const household = await repositories.households.findById(parsed.domicilio_id);
+    if (!household || household.fraccionamiento_id !== actor.fraccionamiento_id) {
+      throw new ForbiddenError("El domicilio no pertenece a tu fraccionamiento.");
+    }
+
+    const activeColonists = await repositories.users.countActiveColonists(parsed.domicilio_id);
+    const config = await repositories.fractionations.getConfig(actor.fraccionamiento_id);
+    const limit = config?.max_usuarios_por_domicilio ?? 2;
+    if (activeColonists >= limit) {
+      throw new AppError(`No se permite mas de ${limit} colonos activos por domicilio.`);
+    }
+  }
+
+  // La cuenta Auth se crea con service role (server-side). La sesion del admin
+  // no se ve afectada porque usamos un cliente admin sin persistencia.
+  const admin = createSupabaseAdminClient();
+  const { data: created, error: createError } = await admin.auth.admin.createUser({
+    email: parsed.email,
+    password: parsed.password,
+    email_confirm: true
+  });
+
+  if (createError || !created?.user) {
+    if (/already.*(registered|exists)/i.test(createError?.message ?? "")) {
+      throw new AppError("Ya existe un usuario con ese email.");
+    }
+    throw new AppError("No se pudo crear la cuenta de acceso.");
+  }
+
+  const authUserId = created.user.id;
+
+  try {
+    const user = await repositories.users.create({
+      auth_user_id: authUserId,
+      fraccionamiento_id: actor.fraccionamiento_id,
+      domicilio_id: parsed.rol === "COLONO" ? parsed.domicilio_id ?? null : null,
+      nombre: parsed.nombre,
+      email: parsed.email,
+      rol: parsed.rol,
+      estatus: "ACTIVO"
+    });
+
+    await auditAction({
+      actor,
+      action: "USUARIO_CREAR",
+      entityType: "perfiles_usuario",
+      entityId: user.id,
+      fraccionamientoId: user.fraccionamiento_id,
+      domicilioId: user.domicilio_id,
+      newValues: toJson({ id: user.id, email: user.email, rol: user.rol, estatus: user.estatus })
+    });
+
+    return user;
+  } catch (error) {
+    // Si falla el perfil (p. ej. el trigger de limite de colonos), borramos la
+    // cuenta Auth para no dejar usuarios huerfanos sin perfil.
+    await admin.auth.admin.deleteUser(authUserId).catch(() => undefined);
+    throw error;
+  }
+}
+
+export async function resetUserPassword(input: unknown) {
+  const parsed = resetUserPasswordSchema.parse(input);
+  const { actor, repositories } = await getServiceContext(["ADMINISTRACION"]);
+  const current = await repositories.users.findById(parsed.id);
+
+  if (!current || current.fraccionamiento_id !== actor.fraccionamiento_id || current.rol === "SUPERADMIN") {
+    throw new ForbiddenError();
+  }
+
+  const password = generateTempPassword();
+  const admin = createSupabaseAdminClient();
+  const { error } = await admin.auth.admin.updateUserById(current.auth_user_id, { password });
+  if (error) {
+    throw new AppError("No se pudo regenerar la contrasena.");
+  }
+
+  await auditAction({
+    actor,
+    action: "USUARIO_RESET_PASSWORD",
+    entityType: "perfiles_usuario",
+    entityId: current.id,
+    fraccionamientoId: current.fraccionamiento_id,
+    domicilioId: current.domicilio_id,
+    metadata: toJson({ email: current.email })
+  });
+
+  return { password, email: current.email };
 }
 
 export async function updateUserStatus(input: unknown) {

@@ -146,6 +146,9 @@ export interface InvitationRepository {
   listActiveToday(fraccionamientoId: string): Promise<InvitationRow[]>;
   searchActive(fraccionamientoId: string, query: string): Promise<InvitationRow[]>;
   updateStatus(id: string, estatus: InvitationStatus, actorId?: string | null): Promise<InvitationRow>;
+  // Marca como USADA solo si sigue VIGENTE (atómico). Devuelve true si la marcó,
+  // false si ya no estaba vigente (p. ej. otro guardia la usó al mismo tiempo).
+  markUsedIfVigente(id: string): Promise<boolean>;
   cancel(id: string, actorId: string): Promise<InvitationRow>;
 }
 

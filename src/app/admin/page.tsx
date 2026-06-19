@@ -2,16 +2,19 @@ import { NoticeBanner } from "@/components/layout/notice-banner";
 import { DashboardCard } from "@/components/ui/dashboard-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AccessStatusBadge, InvitationStatusBadge } from "@/components/ui/status-badges";
+import { TenantReadinessPanel } from "@/features/admin/tenant-readiness-panel";
 import { getAdminDashboard } from "@/server/queries/dashboard";
+import { getTenantReadiness } from "@/server/queries/admin";
 import { formatDateTime } from "@/lib/utils";
 
 export default async function AdminDashboardPage() {
-  const data = await getAdminDashboard();
+  const [data, readiness] = await Promise.all([getAdminDashboard(), getTenantReadiness()]);
   const m = data.metrics;
 
   return (
     <div className="space-y-6">
       <NoticeBanner notices={data.notices} />
+      <TenantReadinessPanel readiness={readiness} />
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <DashboardCard label="Invitaciones hoy" value={m.invitacionesHoy} />
         <DashboardCard label="Accesos hoy" value={m.accesosHoy} />
