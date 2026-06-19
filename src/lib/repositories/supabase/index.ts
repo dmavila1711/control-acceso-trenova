@@ -212,6 +212,21 @@ class SupabaseUserRepository implements UserRepository {
     if (error) raise(error.message);
     return data;
   }
+
+  async updateProfile(id: string, data: { nombre?: string; domicilio_id?: string | null }) {
+    const patch: { nombre?: string; domicilio_id?: string | null } = {};
+    if (data.nombre !== undefined) patch.nombre = data.nombre;
+    if (data.domicilio_id !== undefined) patch.domicilio_id = data.domicilio_id;
+
+    const { data: row, error } = await this.supabase
+      .from("perfiles_usuario")
+      .update(patch)
+      .eq("id", id)
+      .select("*")
+      .single();
+    if (error) raise(error.message);
+    return row;
+  }
 }
 
 class SupabaseInvitationRepository implements InvitationRepository {
