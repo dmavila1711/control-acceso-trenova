@@ -21,15 +21,27 @@ Route handlers protegidos por rol que devuelven CSV (con BOM para Excel):
 Cada listado tiene su botón **"Exportar CSV"**. Respeta el aislamiento por fraccionamiento
 (usan las queries existentes que validan rol y tenant). Util reutilizable en `src/lib/csv.ts`.
 
-## Pendiente de Fase 1.4 (siguiente iteración)
+## Estado de Fase 1.4
 | Tarea | Estado |
 |---|---|
-| CRUD detalle de domicilio (editar, ver colonos/invitaciones/accesos asociados) | ⬜ |
-| Filtros avanzados en invitaciones/accesos/auditoría (fecha, domicilio, guardia, tipo) | ⬜ |
-| Edición de usuario (nombre, rol, reasignar domicilio de colono) | ⬜ |
-| Cancelación administrativa de invitación desde `/admin/invitaciones` | ⬜ |
-| Avisos segmentados (por rol/calle/domicilio) | ⬜ |
-| Mensajes a grupos (todos los colonos, por rol) | ⬜ |
+| Bloqueo de invitaciones por domicilio | ✅ |
+| Exportación CSV (accesos, invitaciones, auditoría, **usuarios, domicilios**) | ✅ |
+| Filtros en invitaciones (estatus/tipo) y accesos (resultado/método) | ✅ |
+| Edición de usuario (nombre + reasignar domicilio de colono) | ✅ |
+| Cancelación administrativa de invitación desde `/admin/invitaciones` | ✅ |
+| Mensajes a grupos (todos / colonos / guardias) | ✅ |
+| CRUD detalle de domicilio (ver colonos/invitaciones/accesos asociados) | ⬜ |
+| Filtros por fecha/domicilio/guardia y avisos segmentados (por rol/calle/domicilio) | ⬜ |
+
+### Implementado en esta iteración
+- **Cancelación administrativa** de invitaciones vigentes (`adminCancelInvitationAction`,
+  el servicio valida rol/tenant y audita `INVITACION_CANCELAR`).
+- **Filtros** por estatus/tipo en invitaciones y por resultado/método en accesos
+  (vía `searchParams`).
+- **Edición de usuario** (`updateUser`): nombre y reasignación de domicilio para colonos,
+  con validación de tenant y tope de colonos; audita `USUARIO_EDITAR`.
+- **Mensajes a grupos**: envío rápido a TODOS / COLONOS / GUARDIAS, expandido server-side.
+- **Exportes** adicionales de usuarios y domicilios.
 
 > Nota: el alta de usuarios/guardias, activar/desactivar y regenerar acceso ya se
 > entregaron en Fase 1.1. La consulta de invitaciones, accesos y auditoría ya existía;
