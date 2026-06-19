@@ -476,6 +476,8 @@ Aplicar en orden en **Supabase → SQL Editor** (o `supabase db push`):
    DEFINER (corrige el error de RLS al crear fraccionamientos).
 4. `0004_seguridad.sql` — tabla `eventos_seguridad` (rate limiting / abusos) con RLS, y
    triggers que hacen `auditoria` y `eventos_seguridad` **append-only** (sin UPDATE/DELETE).
+5. `0005_domicilio_bloqueo.sql` — agrega el estatus `BLOQUEADO_PARA_INVITACIONES` a
+   `domicilios` (bloquea nuevas invitaciones del domicilio sin afectar su historial).
 
 `seed.sql` es opcional (datos demo); sus perfiles no pueden iniciar sesión hasta crear
 usuarios Auth reales.

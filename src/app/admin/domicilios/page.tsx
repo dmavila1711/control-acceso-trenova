@@ -55,13 +55,31 @@ export default async function AdminHouseholdsPage() {
             <div key={household.id} className="flex flex-col gap-3 rounded-md border p-3 md:flex-row md:items-center md:justify-between">
               <div>
                 <p className="font-medium">{compactAddress(household)}</p>
-                <p className="text-sm text-muted-foreground">{household.estatus}</p>
+                <p className="text-sm text-muted-foreground">{household.estatus.replaceAll("_", " ")}</p>
               </div>
-              <form action={updateHouseholdStatusAction}>
-                <input type="hidden" name="id" value={household.id} />
-                <input type="hidden" name="estatus" value={household.estatus === "ACTIVO" ? "INACTIVO" : "ACTIVO"} />
-                <Button variant="secondary" size="sm">{household.estatus === "ACTIVO" ? "Inactivar" : "Activar"}</Button>
-              </form>
+              <div className="flex flex-wrap gap-2">
+                {household.estatus !== "ACTIVO" ? (
+                  <form action={updateHouseholdStatusAction}>
+                    <input type="hidden" name="id" value={household.id} />
+                    <input type="hidden" name="estatus" value="ACTIVO" />
+                    <Button variant="secondary" size="sm">Activar</Button>
+                  </form>
+                ) : null}
+                {household.estatus !== "BLOQUEADO_PARA_INVITACIONES" ? (
+                  <form action={updateHouseholdStatusAction}>
+                    <input type="hidden" name="id" value={household.id} />
+                    <input type="hidden" name="estatus" value="BLOQUEADO_PARA_INVITACIONES" />
+                    <Button variant="secondary" size="sm">Bloquear invitaciones</Button>
+                  </form>
+                ) : null}
+                {household.estatus !== "INACTIVO" ? (
+                  <form action={updateHouseholdStatusAction}>
+                    <input type="hidden" name="id" value={household.id} />
+                    <input type="hidden" name="estatus" value="INACTIVO" />
+                    <Button variant="secondary" size="sm">Inactivar</Button>
+                  </form>
+                ) : null}
+              </div>
             </div>
           ))}
         </CardContent>

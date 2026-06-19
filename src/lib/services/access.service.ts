@@ -3,7 +3,7 @@ import { AppError, ForbiddenError } from "@/lib/errors";
 import type { Repositories } from "@/lib/repositories/contracts";
 import { assertFractionationActive } from "@/lib/security/guards";
 import { getServiceContext } from "@/lib/services/context";
-import { toJson } from "@/lib/utils";
+import { compactAddress, toJson } from "@/lib/utils";
 import {
   accessDecisionSchema,
   notFoundAccessSchema,
@@ -56,7 +56,7 @@ async function evaluateInvitation(repositories: Repositories, invitation: Invita
     };
   }
 
-  if (!household || household.estatus !== "ACTIVO") {
+  if (!household || household.estatus === "INACTIVO") {
     return {
       status: "INVALIDA",
       resultado: "DOMICILIO_INACTIVO",
@@ -95,6 +95,8 @@ async function evaluateInvitation(repositories: Repositories, invitation: Invita
     domicilioId: invitation.domicilio_id,
     visitante: invitation.nombre_visitante,
     tipoVisita: invitation.tipo_visita,
+    domicilio: compactAddress(household),
+    placas: invitation.placas,
     vigencia: {
       inicio: invitation.fecha_inicio,
       fin: invitation.fecha_fin

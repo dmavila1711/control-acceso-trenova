@@ -24,6 +24,7 @@ export default async function AdminDashboardPage() {
         <DashboardCard label="Domicilios activos" value={m.domiciliosActivos} />
         <DashboardCard label="Validaciones QR" value={m.validacionesQrHoy} />
         <DashboardCard label="Codigos numericos" value={m.validacionesCodigoHoy} />
+        <DashboardCard label="Intentos fallidos (24h)" value={data.intentosFallidos} />
       </section>
 
       <section className="grid gap-4 lg:grid-cols-2">

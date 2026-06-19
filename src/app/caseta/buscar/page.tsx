@@ -27,8 +27,8 @@ export default async function CasetaSearchPage({
         <CardContent className="space-y-4">
           <form className="flex flex-col gap-3 md:flex-row md:items-end">
             <div className="flex-1 space-y-2">
-              <Label htmlFor="q">Visitante</Label>
-              <Input id="q" name="q" defaultValue={query} placeholder="Nombre del visitante" />
+              <Label htmlFor="q">Nombre, domicilio o placas</Label>
+              <Input id="q" name="q" defaultValue={query} placeholder="Ej. Juan Perez, Roble 42 o ABC123" />
             </div>
             <Button>
               <Search className="h-4 w-4" aria-hidden="true" />
@@ -38,14 +38,27 @@ export default async function CasetaSearchPage({
 
           <div className="space-y-3">
             {results.map((invitation) => (
-              <Link key={invitation.id} href={`/caseta/invitacion/${invitation.id}`} className="block rounded-md border p-3 hover:bg-secondary/60">
+              <Link
+                key={invitation.id}
+                href={`/caseta/invitacion/${invitation.id}`}
+                className="block rounded-md border p-3 hover:bg-secondary/60"
+              >
                 <p className="font-medium">{invitation.nombre_visitante}</p>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  {invitation.tipo_visita.replaceAll("_", " ")} · Hasta {formatDateTime(invitation.fecha_fin)}
+                  {invitation.tipo_visita.replaceAll("_", " ")}
+                  {invitation.placas ? ` · Placas ${invitation.placas}` : ""} · Hasta{" "}
+                  {formatDateTime(invitation.fecha_fin)}
                 </p>
               </Link>
             ))}
-            {query && results.length === 0 ? <p className="text-sm text-muted-foreground">Sin resultados vigentes.</p> : null}
+            {query && results.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Sin resultados vigentes.</p>
+            ) : null}
+            {!query ? (
+              <p className="text-sm text-muted-foreground">
+                Escribe un dato para buscar invitaciones vigentes.
+              </p>
+            ) : null}
           </div>
         </CardContent>
       </Card>

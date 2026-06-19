@@ -12,18 +12,27 @@ export default async function CasetaDashboardPage() {
   return (
     <div className="space-y-6">
       <NoticeBanner notices={data.notices} />
-      <section className="grid gap-3 md:grid-cols-3">
-        <Link href="/caseta/escanear" className="rounded-lg border bg-white p-4 shadow-soft hover:bg-secondary/50">
-          <QrCode className="h-6 w-6 text-primary" aria-hidden="true" />
-          <p className="mt-3 font-semibold">Escanear QR</p>
+      <section className="grid gap-3 sm:grid-cols-3">
+        <Link
+          href="/caseta/escanear"
+          className="flex flex-col items-center justify-center gap-3 rounded-xl bg-primary p-8 text-center text-primary-foreground shadow-soft transition hover:bg-primary/90"
+        >
+          <QrCode className="h-10 w-10" aria-hidden="true" />
+          <p className="text-lg font-semibold">Escanear QR</p>
         </Link>
-        <Link href="/caseta/codigo" className="rounded-lg border bg-white p-4 shadow-soft hover:bg-secondary/50">
-          <Hash className="h-6 w-6 text-primary" aria-hidden="true" />
-          <p className="mt-3 font-semibold">Capturar codigo</p>
+        <Link
+          href="/caseta/codigo"
+          className="flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-primary bg-white p-8 text-center shadow-soft transition hover:bg-secondary/50"
+        >
+          <Hash className="h-10 w-10 text-primary" aria-hidden="true" />
+          <p className="text-lg font-semibold">Capturar codigo</p>
         </Link>
-        <Link href="/caseta/buscar" className="rounded-lg border bg-white p-4 shadow-soft hover:bg-secondary/50">
-          <Search className="h-6 w-6 text-primary" aria-hidden="true" />
-          <p className="mt-3 font-semibold">Buscar invitacion</p>
+        <Link
+          href="/caseta/buscar"
+          className="flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-primary bg-white p-8 text-center shadow-soft transition hover:bg-secondary/50"
+        >
+          <Search className="h-10 w-10 text-primary" aria-hidden="true" />
+          <p className="text-lg font-semibold">Buscar invitacion</p>
         </Link>
       </section>
 

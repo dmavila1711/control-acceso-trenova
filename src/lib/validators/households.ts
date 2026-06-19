@@ -9,7 +9,7 @@ export const createHouseholdSchema = z.object({
 
 export const updateHouseholdStatusSchema = z.object({
   id: z.string().uuid(),
-  estatus: z.enum(["ACTIVO", "INACTIVO"])
+  estatus: z.enum(["ACTIVO", "INACTIVO", "BLOQUEADO_PARA_INVITACIONES"])
 });
 
 export type CreateHouseholdInput = z.infer<typeof createHouseholdSchema>;

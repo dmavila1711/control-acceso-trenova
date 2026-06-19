@@ -99,3 +99,21 @@ export async function countRecentFailures(params: {
     fraccionamiento: fraccionamiento.count ?? 0
   };
 }
+
+// Total de eventos de seguridad relevantes de un fraccionamiento desde una fecha.
+export async function countSecurityFailures(fraccionamientoId: string, sinceIso: string): Promise<number> {
+  const admin = createSupabaseAdminClient();
+  const { count } = await admin
+    .from("eventos_seguridad")
+    .select("*", { count: "exact", head: true })
+    .eq("fraccionamiento_id", fraccionamientoId)
+    .in("event_type", [
+      SECURITY_EVENT.INVALID_CODE_ATTEMPT,
+      SECURITY_EVENT.INVALID_QR_ATTEMPT,
+      SECURITY_EVENT.RATE_LIMIT_CODE,
+      SECURITY_EVENT.RATE_LIMIT_QR,
+      SECURITY_EVENT.CROSS_TENANT_ATTEMPT
+    ])
+    .gte("created_at", sinceIso);
+  return count ?? 0;
+}

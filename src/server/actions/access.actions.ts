@@ -34,10 +34,21 @@ export async function validateNumericCodeAction(
   }
 }
 
-export async function decideAccessAction(formData: FormData) {
-  await decideAccess(formDataObject(formData));
-  revalidatePath("/caseta");
-  revalidatePath("/caseta/accesos");
+export type DecisionState = ActionResponse<{ resultado: string }>;
+
+export async function decideAccessAction(
+  _previousState: DecisionState,
+  formData: FormData
+): Promise<DecisionState> {
+  try {
+    const values = formDataObject(formData);
+    await decideAccess(values);
+    revalidatePath("/caseta");
+    revalidatePath("/caseta/accesos");
+    return { ok: true, data: { resultado: String(values.resultado ?? "") } };
+  } catch (error) {
+    return actionFailure(error) as DecisionState;
+  }
 }
 
 export async function registerNotFoundAccessAction(formData: FormData) {

@@ -7,8 +7,14 @@ export default async function AdminAuditPage() {
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between gap-3">
         <CardTitle>Auditoria del fraccionamiento</CardTitle>
+        <a
+          href="/admin/auditoria/export"
+          className="rounded-md border px-3 py-1.5 text-sm font-medium hover:bg-secondary"
+        >
+          Exportar CSV
+        </a>
       </CardHeader>
       <CardContent className="space-y-3">
         {rows.map((row) => (

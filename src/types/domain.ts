@@ -12,7 +12,7 @@ export const FRACTIONATION_STATUSES = [
 ] as const;
 export type FractionationStatus = (typeof FRACTIONATION_STATUSES)[number];
 
-export const HOUSEHOLD_STATUSES = ["ACTIVO", "INACTIVO"] as const;
+export const HOUSEHOLD_STATUSES = ["ACTIVO", "INACTIVO", "BLOQUEADO_PARA_INVITACIONES"] as const;
 export type HouseholdStatus = (typeof HOUSEHOLD_STATUSES)[number];
 
 export const VISIT_TYPES = [
@@ -83,6 +83,8 @@ export type ValidationSuccess = {
   domicilioId: UUID;
   visitante: string;
   tipoVisita: VisitType;
+  domicilio?: string | null;
+  placas?: string | null;
   vigencia: {
     inicio: string;
     fin: string;

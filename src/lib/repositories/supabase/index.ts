@@ -135,7 +135,7 @@ class SupabaseHouseholdRepository implements HouseholdRepository {
     return data;
   }
 
-  async updateStatus(id: string, estatus: "ACTIVO" | "INACTIVO") {
+  async updateStatus(id: string, estatus: "ACTIVO" | "INACTIVO" | "BLOQUEADO_PARA_INVITACIONES") {
     const { data, error } = await this.supabase
       .from("domicilios")
       .update({ estatus })
@@ -314,9 +314,11 @@ class SupabaseInvitationRepository implements InvitationRepository {
     const { data, error } =
       householdIds.length > 0
         ? await base
-            .or(`nombre_visitante.ilike.%${term}%,domicilio_id.in.(${householdIds.join(",")})`)
+            .or(
+              `nombre_visitante.ilike.%${term}%,placas.ilike.%${term}%,domicilio_id.in.(${householdIds.join(",")})`
+            )
             .limit(20)
-        : await base.ilike("nombre_visitante", `%${term}%`).limit(20);
+        : await base.or(`nombre_visitante.ilike.%${term}%,placas.ilike.%${term}%`).limit(20);
     if (error) raise(error.message);
     return data;
   }

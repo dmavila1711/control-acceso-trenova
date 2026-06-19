@@ -91,8 +91,12 @@ export async function createInvitation(input: unknown) {
     throw new AppError("No se encontro el fraccionamiento.");
   }
 
-  if (!household || household.estatus !== "ACTIVO") {
+  if (!household || household.estatus === "INACTIVO") {
     throw new ForbiddenError("El domicilio esta inactivo.");
+  }
+
+  if (household.estatus === "BLOQUEADO_PARA_INVITACIONES") {
+    throw new ForbiddenError("Este domicilio esta bloqueado para generar invitaciones. Contacta a administracion.");
   }
 
   assertFractionationActive(fractionation.estatus);

@@ -8,8 +8,14 @@ export default async function AdminAccessLogsPage() {
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between gap-3">
         <CardTitle>Accesos</CardTitle>
+        <a
+          href="/admin/accesos/export"
+          className="rounded-md border px-3 py-1.5 text-sm font-medium hover:bg-secondary"
+        >
+          Exportar CSV
+        </a>
       </CardHeader>
       <CardContent className="space-y-3">
         {accessLogs.map((access) => (
