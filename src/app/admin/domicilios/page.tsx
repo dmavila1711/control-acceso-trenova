@@ -47,8 +47,11 @@ export default async function AdminHouseholdsPage() {
       </div>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between gap-3">
           <CardTitle>Domicilios</CardTitle>
+          <a href="/admin/domicilios/export" className="rounded-md border px-3 py-1.5 text-sm font-medium hover:bg-secondary">
+            Exportar CSV
+          </a>
         </CardHeader>
         <CardContent className="space-y-3">
           {households.map((household) => (
