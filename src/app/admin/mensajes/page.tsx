@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { sendInternalMessageAction } from "@/server/actions/admin.actions";
 import { getAdminMessages, getAdminUsers } from "@/server/queries/admin";
@@ -26,6 +27,18 @@ export default async function AdminMessagesPage() {
             <div className="space-y-2">
               <Label htmlFor="mensaje">Mensaje</Label>
               <Textarea id="mensaje" name="mensaje" required />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="group">Enviar a un grupo (opcional)</Label>
+              <Select id="group" name="group" defaultValue="">
+                <option value="">Destinatarios especificos</option>
+                <option value="TODOS">Todos (colonos y guardias)</option>
+                <option value="COLONOS">Todos los colonos</option>
+                <option value="GUARDIAS">Todos los guardias</option>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Si eliges un grupo, se ignora la seleccion individual de abajo.
+              </p>
             </div>
             <div className="max-h-56 space-y-2 overflow-auto rounded-md border p-3">
               {recipients.map((user) => (
