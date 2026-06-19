@@ -26,7 +26,8 @@
 | Métricas por periodo (series por día) | ⬜ |
 | Tabla/registro dedicado de errores operativos | 🟡 base: `eventos_seguridad` reutilizable |
 | Más alertas (sin actividad reciente, zona no configurada, usuarios pendientes) | ⬜ |
-| Exportes adicionales (usuarios, domicilios, métricas) | ⬜ |
+| Exportes adicionales: usuarios y domicilios | ✅ (ver Fase 1.4) |
+| Exporte de métricas resumidas | ⬜ |
 
 ## Archivos
 - `src/server/queries/dashboard.ts` (alertas de superadmin + intentos fallidos en admin)
