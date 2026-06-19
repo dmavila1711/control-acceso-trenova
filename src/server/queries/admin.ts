@@ -30,14 +30,24 @@ export async function getAdminUsers() {
   return repositories.users.listByFractionation(fraccionamientoId);
 }
 
-export async function getAdminInvitations() {
+export async function getAdminInvitations(filters?: { estatus?: string; tipo?: string }) {
   const { repositories, fraccionamientoId } = await adminRepositories();
-  return repositories.invitations.listByFractionation(fraccionamientoId);
+  const rows = await repositories.invitations.listByFractionation(fraccionamientoId);
+  return rows.filter(
+    (row) =>
+      (!filters?.estatus || row.estatus === filters.estatus) &&
+      (!filters?.tipo || row.tipo_visita === filters.tipo)
+  );
 }
 
-export async function getAdminAccessLogs() {
+export async function getAdminAccessLogs(filters?: { resultado?: string; metodo?: string }) {
   const { repositories, fraccionamientoId } = await adminRepositories();
-  return repositories.accessLogs.listByFractionation(fraccionamientoId);
+  const rows = await repositories.accessLogs.listByFractionation(fraccionamientoId);
+  return rows.filter(
+    (row) =>
+      (!filters?.resultado || row.resultado === filters.resultado) &&
+      (!filters?.metodo || row.metodo_validacion === filters.metodo)
+  );
 }
 
 export async function getAdminNotices() {
