@@ -413,15 +413,32 @@ export async function sendInternalMessage(input: unknown) {
   }
 
   const recipients = await repositories.users.listMessageRecipients(actor.fraccionamiento_id);
-  const allowedRecipientIds = new Set(recipients.map((recipient) => recipient.id));
-  const invalid = parsed.recipient_ids.some((recipientId) => !allowedRecipientIds.has(recipientId));
 
-  if (invalid) {
-    throw new ForbiddenError("Hay destinatarios fuera de tu fraccionamiento.");
+  // Destinatarios: por grupo (se expande a usuarios activos del fraccionamiento) o
+  // por seleccion explicita (validada contra el fraccionamiento del admin).
+  let recipientIds: string[];
+  if (parsed.group) {
+    const byGroup = recipients.filter((recipient) => {
+      if (parsed.group === "COLONOS") return recipient.rol === "COLONO";
+      if (parsed.group === "GUARDIAS") return recipient.rol === "GUARDIA";
+      return recipient.rol === "COLONO" || recipient.rol === "GUARDIA";
+    });
+    recipientIds = byGroup.map((recipient) => recipient.id);
+  } else {
+    const allowedRecipientIds = new Set(recipients.map((recipient) => recipient.id));
+    const invalid = parsed.recipient_ids.some((recipientId) => !allowedRecipientIds.has(recipientId));
+    if (invalid) {
+      throw new ForbiddenError("Hay destinatarios fuera de tu fraccionamiento.");
+    }
+    recipientIds = parsed.recipient_ids;
+  }
+
+  if (recipientIds.length === 0) {
+    throw new AppError("No hay destinatarios para este mensaje.");
   }
 
   const messages = await repositories.messages.createMany(
-    parsed.recipient_ids.map((recipientId) => ({
+    recipientIds.map((recipientId) => ({
       fraccionamiento_id: actor.fraccionamiento_id as string,
       sender_id: actor.id,
       recipient_id: recipientId,
@@ -436,7 +453,8 @@ export async function sendInternalMessage(input: unknown) {
     entityType: "mensajes_administrativos",
     fraccionamientoId: actor.fraccionamiento_id,
     metadata: toJson({
-      total_destinatarios: parsed.recipient_ids.length,
+      total_destinatarios: recipientIds.length,
+      grupo: parsed.group ?? null,
       message_ids: messages.map((message) => message.id)
     })
   });
