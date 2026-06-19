@@ -134,6 +134,7 @@ export interface UserRepository {
   listMessageRecipients(fraccionamientoId: string): Promise<UserProfileRow[]>;
   countActiveColonists(domicilioId: string): Promise<number>;
   updateStatus(id: string, estatus: UserProfileRow["estatus"], actorId: string): Promise<UserProfileRow>;
+  updateProfile(id: string, data: { nombre?: string; domicilio_id?: string | null }): Promise<UserProfileRow>;
 }
 
 export interface InvitationRepository {

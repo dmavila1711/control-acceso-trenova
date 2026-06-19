@@ -10,6 +10,7 @@ import {
   resetUserPassword,
   sendInternalMessage,
   updateHouseholdStatus,
+  updateUser,
   updateUserStatus,
   type ImportResult
 } from "@/lib/services/admin.service";
@@ -55,6 +56,11 @@ export async function updateUserStatusAction(formData: FormData) {
   await updateUserStatus(formDataObject(formData));
   revalidatePath("/admin/usuarios");
   revalidatePath("/admin/guardias");
+}
+
+export async function updateUserAction(formData: FormData) {
+  await updateUser(formDataObject(formData));
+  revalidatePath("/admin/usuarios");
 }
 
 export async function resetUserPasswordAction(

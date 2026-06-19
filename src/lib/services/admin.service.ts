@@ -11,6 +11,7 @@ import {
   createUserSchema,
   createUserWithAccountSchema,
   resetUserPasswordSchema,
+  updateUserSchema,
   updateUserStatusSchema
 } from "@/lib/validators/users";
 
@@ -256,6 +257,53 @@ export async function createUserWithAccount(input: unknown) {
     await admin.auth.admin.deleteUser(authUserId).catch(() => undefined);
     throw error;
   }
+}
+
+export async function updateUser(input: unknown) {
+  const parsed = updateUserSchema.parse(input);
+  const { actor, repositories } = await getServiceContext(["ADMINISTRACION"]);
+  const current = await repositories.users.findById(parsed.id);
+
+  if (!current || current.fraccionamiento_id !== actor.fraccionamiento_id || current.rol === "SUPERADMIN") {
+    throw new ForbiddenError();
+  }
+
+  const patch: { nombre?: string; domicilio_id?: string | null } = { nombre: parsed.nombre };
+
+  // Reasignacion de domicilio: solo para colonos y dentro del fraccionamiento.
+  if (current.rol === "COLONO") {
+    const nuevoDomicilio = parsed.domicilio_id ?? null;
+    if (nuevoDomicilio && nuevoDomicilio !== current.domicilio_id) {
+      const household = await repositories.households.findById(nuevoDomicilio);
+      if (!household || household.fraccionamiento_id !== actor.fraccionamiento_id) {
+        throw new ForbiddenError("El domicilio no pertenece a tu fraccionamiento.");
+      }
+      if (current.estatus === "ACTIVO") {
+        const activeColonists = await repositories.users.countActiveColonists(nuevoDomicilio);
+        const config = await repositories.fractionations.getConfig(actor.fraccionamiento_id);
+        const limit = config?.max_usuarios_por_domicilio ?? 2;
+        if (activeColonists >= limit) {
+          throw new AppError(`No se permite mas de ${limit} colonos activos por domicilio.`);
+        }
+      }
+      patch.domicilio_id = nuevoDomicilio;
+    }
+  }
+
+  const updated = await repositories.users.updateProfile(parsed.id, patch);
+
+  await auditAction({
+    actor,
+    action: "USUARIO_EDITAR",
+    entityType: "perfiles_usuario",
+    entityId: updated.id,
+    fraccionamientoId: updated.fraccionamiento_id,
+    domicilioId: updated.domicilio_id,
+    previousValues: toJson({ nombre: current.nombre, domicilio_id: current.domicilio_id }),
+    newValues: toJson({ nombre: updated.nombre, domicilio_id: updated.domicilio_id })
+  });
+
+  return updated;
 }
 
 export async function resetUserPassword(input: unknown) {

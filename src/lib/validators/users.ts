@@ -65,5 +65,11 @@ export const resetUserPasswordSchema = z.object({
   id: z.string().uuid("Usuario invalido.")
 });
 
+export const updateUserSchema = z.object({
+  id: z.string().uuid("Usuario invalido."),
+  nombre: z.string().trim().min(2, "Escribe el nombre."),
+  domicilio_id: optionalUuid
+});
+
 export type CreateUserInput = z.infer<typeof createUserSchema>;
 export type CreateUserWithAccountInput = z.infer<typeof createUserWithAccountSchema>;
