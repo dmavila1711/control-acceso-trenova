@@ -176,6 +176,17 @@ class SupabaseUserRepository implements UserRepository {
     return data;
   }
 
+  async listByHousehold(domicilioId: string) {
+    const { data, error } = await this.supabase
+      .from("perfiles_usuario")
+      .select("*")
+      .eq("domicilio_id", domicilioId)
+      .order("estatus")
+      .order("nombre");
+    if (error) raise(error.message);
+    return data;
+  }
+
   async listMessageRecipients(fraccionamientoId: string) {
     const { data, error } = await this.supabase
       .from("perfiles_usuario")

@@ -131,6 +131,7 @@ export interface UserRepository {
   create(data: CreateUserData): Promise<UserProfileRow>;
   findById(id: string): Promise<UserProfileRow | null>;
   listByFractionation(fraccionamientoId: string): Promise<UserProfileRow[]>;
+  listByHousehold(domicilioId: string): Promise<UserProfileRow[]>;
   listMessageRecipients(fraccionamientoId: string): Promise<UserProfileRow[]>;
   countActiveColonists(domicilioId: string): Promise<number>;
   updateStatus(id: string, estatus: UserProfileRow["estatus"], actorId: string): Promise<UserProfileRow>;

@@ -30,6 +30,34 @@ export async function getAdminUsers() {
   return repositories.users.listByFractionation(fraccionamientoId);
 }
 
+// Detalle completo de un domicilio. Devuelve null si no existe o no pertenece al
+// fraccionamiento del administrador (tenant-scoped, defensa en profundidad además de RLS).
+export async function getAdminHouseholdDetail(id: string) {
+  const { repositories, fraccionamientoId } = await adminRepositories();
+  const household = await repositories.households.findById(id);
+  if (!household || household.fraccionamiento_id !== fraccionamientoId) {
+    return null;
+  }
+
+  const [colonos, invitations, accessLogs] = await Promise.all([
+    repositories.users.listByHousehold(id),
+    repositories.invitations.listByHousehold(id),
+    repositories.accessLogs.listByHousehold(id)
+  ]);
+
+  return {
+    household,
+    colonos,
+    invitations: invitations.slice(0, 10),
+    accessLogs: accessLogs.slice(0, 10),
+    counts: {
+      colonos: colonos.length,
+      invitaciones: invitations.length,
+      accesos: accessLogs.length
+    }
+  };
+}
+
 export async function getAdminInvitations(filters?: { estatus?: string; tipo?: string }) {
   const { repositories, fraccionamientoId } = await adminRepositories();
   const rows = await repositories.invitations.listByFractionation(fraccionamientoId);
