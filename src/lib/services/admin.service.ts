@@ -5,7 +5,12 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { toJson } from "@/lib/utils";
 import { createHouseholdSchema, updateHouseholdStatusSchema } from "@/lib/validators/households";
 import { createMessageSchema } from "@/lib/validators/messages";
-import { createNoticeSchema } from "@/lib/validators/notices";
+import {
+  createNoticeSchema,
+  updateNoticeSchema,
+  updateNoticeStatusSchema
+} from "@/lib/validators/notices";
+import type { NoticeSegment } from "@/types/domain";
 import { randomBytes } from "node:crypto";
 import {
   createUserSchema,
@@ -374,6 +379,38 @@ export async function updateUserStatus(input: unknown) {
   return updated;
 }
 
+type SegmentInput = {
+  segmento: NoticeSegment;
+  segmento_calle?: string;
+  segmento_domicilio_id?: string;
+};
+type SegmentTarget = { segmento_calle: string | null; segmento_domicilio_id: string | null };
+
+// Normaliza el objetivo del segmento y, para DOMICILIO, valida que el domicilio
+// pertenezca al fraccionamiento del administrador (defensa en profundidad). Los
+// segmentos que no son CALLE/DOMICILIO quedan sin objetivo (coherente con el
+// constraint de la migracion).
+async function resolveSegmentTarget(
+  parsed: SegmentInput,
+  fraccionamientoId: string,
+  households: { findById(id: string): Promise<{ fraccionamiento_id: string } | null> }
+): Promise<SegmentTarget> {
+  if (parsed.segmento === "DOMICILIO") {
+    const id = parsed.segmento_domicilio_id ?? null;
+    if (id) {
+      const household = await households.findById(id);
+      if (!household || household.fraccionamiento_id !== fraccionamientoId) {
+        throw new ForbiddenError("El domicilio no pertenece a tu fraccionamiento.");
+      }
+    }
+    return { segmento_calle: null, segmento_domicilio_id: id };
+  }
+  if (parsed.segmento === "CALLE") {
+    return { segmento_calle: parsed.segmento_calle ?? null, segmento_domicilio_id: null };
+  }
+  return { segmento_calle: null, segmento_domicilio_id: null };
+}
+
 export async function createNotice(input: unknown) {
   const parsed = createNoticeSchema.parse(input);
   const { actor, repositories } = await getServiceContext(["ADMINISTRACION"]);
@@ -382,11 +419,16 @@ export async function createNotice(input: unknown) {
     throw new ForbiddenError("Tu usuario no tiene fraccionamiento asignado.");
   }
 
+  const target = await resolveSegmentTarget(parsed, actor.fraccionamiento_id, repositories.households);
+
   const notice = await repositories.notices.create({
     fraccionamiento_id: actor.fraccionamiento_id,
     titulo: parsed.titulo,
     mensaje: parsed.mensaje,
     prioridad: parsed.prioridad,
+    segmento: parsed.segmento,
+    segmento_calle: target.segmento_calle,
+    segmento_domicilio_id: target.segmento_domicilio_id,
     fecha_inicio: new Date(parsed.fecha_inicio).toISOString(),
     fecha_fin: new Date(parsed.fecha_fin).toISOString(),
     created_by: actor.id
@@ -402,6 +444,83 @@ export async function createNotice(input: unknown) {
   });
 
   return notice;
+}
+
+export async function updateNotice(input: unknown) {
+  const parsed = updateNoticeSchema.parse(input);
+  const { actor, repositories } = await getServiceContext(["ADMINISTRACION"]);
+  const current = await repositories.notices.findById(parsed.id);
+
+  if (!current || current.fraccionamiento_id !== actor.fraccionamiento_id) {
+    throw new ForbiddenError();
+  }
+
+  const target = await resolveSegmentTarget(parsed, current.fraccionamiento_id, repositories.households);
+
+  const updated = await repositories.notices.update(parsed.id, {
+    titulo: parsed.titulo,
+    mensaje: parsed.mensaje,
+    prioridad: parsed.prioridad,
+    segmento: parsed.segmento,
+    segmento_calle: target.segmento_calle,
+    segmento_domicilio_id: target.segmento_domicilio_id,
+    fecha_inicio: new Date(parsed.fecha_inicio).toISOString(),
+    fecha_fin: new Date(parsed.fecha_fin).toISOString()
+  });
+
+  await auditAction({
+    actor,
+    action: "AVISO_EDITAR",
+    entityType: "avisos_generales",
+    entityId: updated.id,
+    fraccionamientoId: updated.fraccionamiento_id,
+    previousValues: toJson({
+      titulo: current.titulo,
+      mensaje: current.mensaje,
+      prioridad: current.prioridad,
+      segmento: current.segmento,
+      segmento_calle: current.segmento_calle,
+      segmento_domicilio_id: current.segmento_domicilio_id,
+      fecha_inicio: current.fecha_inicio,
+      fecha_fin: current.fecha_fin
+    }),
+    newValues: toJson({
+      titulo: updated.titulo,
+      mensaje: updated.mensaje,
+      prioridad: updated.prioridad,
+      segmento: updated.segmento,
+      segmento_calle: updated.segmento_calle,
+      segmento_domicilio_id: updated.segmento_domicilio_id,
+      fecha_inicio: updated.fecha_inicio,
+      fecha_fin: updated.fecha_fin
+    })
+  });
+
+  return updated;
+}
+
+export async function updateNoticeStatus(input: unknown) {
+  const parsed = updateNoticeStatusSchema.parse(input);
+  const { actor, repositories } = await getServiceContext(["ADMINISTRACION"]);
+  const current = await repositories.notices.findById(parsed.id);
+
+  if (!current || current.fraccionamiento_id !== actor.fraccionamiento_id) {
+    throw new ForbiddenError();
+  }
+
+  const updated = await repositories.notices.updateStatus(parsed.id, parsed.estatus);
+
+  await auditAction({
+    actor,
+    action: "AVISO_CAMBIAR_ESTATUS",
+    entityType: "avisos_generales",
+    entityId: updated.id,
+    fraccionamientoId: updated.fraccionamiento_id,
+    previousValues: toJson({ estatus: current.estatus }),
+    newValues: toJson({ estatus: updated.estatus })
+  });
+
+  return updated;
 }
 
 export async function sendInternalMessage(input: unknown) {

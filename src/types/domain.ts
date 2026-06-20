@@ -54,6 +54,20 @@ export type AccessResult = (typeof ACCESS_RESULTS)[number];
 export const NOTICE_PRIORITIES = ["BAJA", "NORMAL", "ALTA"] as const;
 export type NoticePriority = (typeof NOTICE_PRIORITIES)[number];
 
+export const NOTICE_STATUSES = ["ACTIVO", "INACTIVO"] as const;
+export type NoticeStatus = (typeof NOTICE_STATUSES)[number];
+
+// Segmentacion de avisos: a quien va dirigido cada aviso dentro del fraccionamiento.
+export const NOTICE_SEGMENTS = [
+  "TODOS",
+  "COLONOS",
+  "GUARDIAS",
+  "ADMINISTRACION",
+  "CALLE",
+  "DOMICILIO"
+] as const;
+export type NoticeSegment = (typeof NOTICE_SEGMENTS)[number];
+
 export const MESSAGE_CHANNELS = ["INTERNO", "EMAIL", "WHATSAPP", "PUSH"] as const;
 export type MessageChannel = (typeof MESSAGE_CHANNELS)[number];
 

@@ -7,6 +7,7 @@ import type {
   MessageChannel,
   MessageStatus,
   NoticePriority,
+  NoticeSegment,
   UserRole,
   UserStatus,
   ValidationMethod,
@@ -121,6 +122,9 @@ export type NoticeRow = {
   titulo: string;
   mensaje: string;
   prioridad: NoticePriority;
+  segmento: NoticeSegment;
+  segmento_calle: string | null;
+  segmento_domicilio_id: string | null;
   fecha_inicio: string;
   fecha_fin: string;
   estatus: "ACTIVO" | "INACTIVO";
