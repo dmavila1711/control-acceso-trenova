@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -49,6 +50,8 @@ export default async function AdminHouseholdsPage() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-3">
           <CardTitle>Domicilios</CardTitle>
+          {/* Route handler de descarga (CSV), no una pagina: se usa <a> a proposito. */}
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
           <a href="/admin/domicilios/export" className="rounded-md border px-3 py-1.5 text-sm font-medium hover:bg-secondary">
             Exportar CSV
           </a>
@@ -57,10 +60,18 @@ export default async function AdminHouseholdsPage() {
           {households.map((household) => (
             <div key={household.id} className="flex flex-col gap-3 rounded-md border p-3 md:flex-row md:items-center md:justify-between">
               <div>
-                <p className="font-medium">{compactAddress(household)}</p>
+                <Link href={`/admin/domicilios/${household.id}`} className="font-medium text-primary hover:underline">
+                  {compactAddress(household)}
+                </Link>
                 <p className="text-sm text-muted-foreground">{household.estatus.replaceAll("_", " ")}</p>
               </div>
               <div className="flex flex-wrap gap-2">
+                <Link
+                  href={`/admin/domicilios/${household.id}`}
+                  className="rounded-md border px-3 py-1.5 text-sm font-medium hover:bg-secondary"
+                >
+                  Ver detalle
+                </Link>
                 {household.estatus !== "ACTIVO" ? (
                   <form action={updateHouseholdStatusAction}>
                     <input type="hidden" name="id" value={household.id} />
