@@ -1,18 +1,38 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { AccessStatusBadge } from "@/components/ui/status-badges";
-import { getAdminAccessLogs } from "@/server/queries/admin";
+import { getAdminAccessLogs, getAdminHouseholds, getAdminUsers } from "@/server/queries/admin";
 import { ACCESS_RESULTS, VALIDATION_METHODS } from "@/types/domain";
-import { formatDateTime } from "@/lib/utils";
+import { compactAddress, formatDateTime } from "@/lib/utils";
 
 export default async function AdminAccessLogsPage({
   searchParams
 }: {
-  searchParams: Promise<{ resultado?: string; metodo?: string }>;
+  searchParams: Promise<{
+    resultado?: string;
+    metodo?: string;
+    domicilio?: string;
+    guardia?: string;
+    desde?: string;
+    hasta?: string;
+  }>;
 }) {
   const params = await searchParams;
-  const accessLogs = await getAdminAccessLogs({ resultado: params.resultado, metodo: params.metodo });
+  const [accessLogs, households, users] = await Promise.all([
+    getAdminAccessLogs({
+      resultado: params.resultado,
+      metodo: params.metodo,
+      domicilioId: params.domicilio,
+      guardiaId: params.guardia,
+      desde: params.desde,
+      hasta: params.hasta
+    }),
+    getAdminHouseholds(),
+    getAdminUsers()
+  ]);
+  const guardias = users.filter((user) => user.rol === "GUARDIA");
 
   return (
     <Card>
@@ -44,6 +64,32 @@ export default async function AdminAccessLogsPage({
                 <option key={mtd} value={mtd}>{mtd.replaceAll("_", " ")}</option>
               ))}
             </Select>
+          </div>
+          <div className="space-y-1">
+            <label htmlFor="domicilio" className="text-xs text-muted-foreground">Domicilio</label>
+            <Select id="domicilio" name="domicilio" defaultValue={params.domicilio ?? ""}>
+              <option value="">Todos</option>
+              {households.map((household) => (
+                <option key={household.id} value={household.id}>{compactAddress(household)}</option>
+              ))}
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <label htmlFor="guardia" className="text-xs text-muted-foreground">Guardia</label>
+            <Select id="guardia" name="guardia" defaultValue={params.guardia ?? ""}>
+              <option value="">Todos</option>
+              {guardias.map((guardia) => (
+                <option key={guardia.id} value={guardia.id}>{guardia.nombre}</option>
+              ))}
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <label htmlFor="desde" className="text-xs text-muted-foreground">Desde</label>
+            <Input id="desde" name="desde" type="date" defaultValue={params.desde ?? ""} />
+          </div>
+          <div className="space-y-1">
+            <label htmlFor="hasta" className="text-xs text-muted-foreground">Hasta</label>
+            <Input id="hasta" name="hasta" type="date" defaultValue={params.hasta ?? ""} />
           </div>
           <Button type="submit" variant="secondary" size="sm">Filtrar</Button>
         </form>

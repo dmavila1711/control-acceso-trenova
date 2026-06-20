@@ -1,19 +1,35 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { InvitationStatusBadge } from "@/components/ui/status-badges";
 import { adminCancelInvitationAction } from "@/server/actions/invitations.actions";
-import { getAdminInvitations } from "@/server/queries/admin";
+import { getAdminHouseholds, getAdminInvitations } from "@/server/queries/admin";
 import { INVITATION_STATUSES, VISIT_TYPES } from "@/types/domain";
-import { formatDateTime } from "@/lib/utils";
+import { compactAddress, formatDateTime } from "@/lib/utils";
 
 export default async function AdminInvitationsPage({
   searchParams
 }: {
-  searchParams: Promise<{ estatus?: string; tipo?: string }>;
+  searchParams: Promise<{
+    estatus?: string;
+    tipo?: string;
+    domicilio?: string;
+    desde?: string;
+    hasta?: string;
+  }>;
 }) {
   const params = await searchParams;
-  const invitations = await getAdminInvitations({ estatus: params.estatus, tipo: params.tipo });
+  const [invitations, households] = await Promise.all([
+    getAdminInvitations({
+      estatus: params.estatus,
+      tipo: params.tipo,
+      domicilioId: params.domicilio,
+      desde: params.desde,
+      hasta: params.hasta
+    }),
+    getAdminHouseholds()
+  ]);
 
   return (
     <Card>
@@ -45,6 +61,23 @@ export default async function AdminInvitationsPage({
                 <option key={tipo} value={tipo}>{tipo.replaceAll("_", " ")}</option>
               ))}
             </Select>
+          </div>
+          <div className="space-y-1">
+            <label htmlFor="domicilio" className="text-xs text-muted-foreground">Domicilio</label>
+            <Select id="domicilio" name="domicilio" defaultValue={params.domicilio ?? ""}>
+              <option value="">Todos</option>
+              {households.map((household) => (
+                <option key={household.id} value={household.id}>{compactAddress(household)}</option>
+              ))}
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <label htmlFor="desde" className="text-xs text-muted-foreground">Desde</label>
+            <Input id="desde" name="desde" type="date" defaultValue={params.desde ?? ""} />
+          </div>
+          <div className="space-y-1">
+            <label htmlFor="hasta" className="text-xs text-muted-foreground">Hasta</label>
+            <Input id="hasta" name="hasta" type="date" defaultValue={params.hasta ?? ""} />
           </div>
           <Button type="submit" variant="secondary" size="sm">Filtrar</Button>
         </form>

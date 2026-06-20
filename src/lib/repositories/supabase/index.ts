@@ -2,6 +2,7 @@ import { AppError } from "@/lib/errors";
 import { zonedStartOfDay, zonedStartOfMonth } from "@/lib/time/zoned";
 import type { AppSupabaseClient } from "@/lib/supabase/server";
 import type {
+  AccessLogListFilters,
   AccessLogRepository,
   CreateAccessLogData,
   CreateFractionationData,
@@ -12,6 +13,7 @@ import type {
   CreateUserData,
   FractionationRepository,
   HouseholdRepository,
+  InvitationListFilters,
   InvitationRepository,
   MessageRepository,
   MetricsRepository,
@@ -19,10 +21,23 @@ import type {
   Repositories,
   UserRepository
 } from "@/lib/repositories/contracts";
-import type { InvitationStatus } from "@/types/domain";
+import type { AccessResult, InvitationStatus, ValidationMethod, VisitType } from "@/types/domain";
 
 function raise(message: string): never {
   throw new AppError(message);
+}
+
+// Limite razonable para listados de administracion filtrados.
+const ADMIN_LIST_LIMIT = 300;
+
+// Limites de dia para filtros. La capa de query ya convierte las fechas a la zona
+// horaria del fraccionamiento y entrega ISO completo (con "T"), que se usa tal cual.
+// El fallback para una fecha "YYYY-MM-DD" suelta (UTC) es solo defensivo.
+function dayStart(value: string): string {
+  return value.includes("T") ? value : `${value}T00:00:00.000Z`;
+}
+function dayEnd(value: string): string {
+  return value.includes("T") ? value : `${value}T23:59:59.999Z`;
 }
 
 async function exactCount(
@@ -287,12 +302,21 @@ class SupabaseInvitationRepository implements InvitationRepository {
     return data;
   }
 
-  async listByFractionation(fraccionamientoId: string) {
-    const { data, error } = await this.supabase
+  async listByFractionation(fraccionamientoId: string, filters?: InvitationListFilters) {
+    let query = this.supabase
       .from("invitaciones")
       .select("*")
-      .eq("fraccionamiento_id", fraccionamientoId)
-      .order("created_at", { ascending: false });
+      .eq("fraccionamiento_id", fraccionamientoId);
+
+    if (filters?.estatus) query = query.eq("estatus", filters.estatus as InvitationStatus);
+    if (filters?.tipo) query = query.eq("tipo_visita", filters.tipo as VisitType);
+    if (filters?.domicilioId) query = query.eq("domicilio_id", filters.domicilioId);
+    if (filters?.desde) query = query.gte("created_at", dayStart(filters.desde));
+    if (filters?.hasta) query = query.lte("created_at", dayEnd(filters.hasta));
+
+    const { data, error } = await query
+      .order("created_at", { ascending: false })
+      .limit(ADMIN_LIST_LIMIT);
     if (error) raise(error.message);
     return data;
   }
@@ -399,12 +423,22 @@ class SupabaseAccessLogRepository implements AccessLogRepository {
     return data;
   }
 
-  async listByFractionation(fraccionamientoId: string) {
-    const { data, error } = await this.supabase
+  async listByFractionation(fraccionamientoId: string, filters?: AccessLogListFilters) {
+    let query = this.supabase
       .from("accesos")
       .select("*")
-      .eq("fraccionamiento_id", fraccionamientoId)
-      .order("arrived_at", { ascending: false });
+      .eq("fraccionamiento_id", fraccionamientoId);
+
+    if (filters?.resultado) query = query.eq("resultado", filters.resultado as AccessResult);
+    if (filters?.metodo) query = query.eq("metodo_validacion", filters.metodo as ValidationMethod);
+    if (filters?.domicilioId) query = query.eq("domicilio_id", filters.domicilioId);
+    if (filters?.guardiaId) query = query.eq("guardia_id", filters.guardiaId);
+    if (filters?.desde) query = query.gte("arrived_at", dayStart(filters.desde));
+    if (filters?.hasta) query = query.lte("arrived_at", dayEnd(filters.hasta));
+
+    const { data, error } = await query
+      .order("arrived_at", { ascending: false })
+      .limit(ADMIN_LIST_LIMIT);
     if (error) raise(error.message);
     return data;
   }
