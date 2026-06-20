@@ -13,7 +13,13 @@ vi.mock("@/lib/services/context", () => ({
 }));
 
 import { getServiceContext } from "@/lib/services/context";
-import { updateUser, sendInternalMessage } from "@/lib/services/admin.service";
+import {
+  createNotice,
+  sendInternalMessage,
+  updateNotice,
+  updateNoticeStatus,
+  updateUser
+} from "@/lib/services/admin.service";
 import { AppError, ForbiddenError } from "@/lib/errors";
 
 const getServiceContextMock = vi.mocked(getServiceContext);
@@ -167,5 +173,73 @@ describe("sendInternalMessage (expansion por grupo)", () => {
 
   it("expande TODOS a colonos y guardias, excluyendo administracion", async () => {
     expect(await sendToGroup("TODOS")).toEqual([C1, C2, G1]);
+  });
+});
+
+describe("avisos segmentados (tenant)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const NOTICE_ID = "d0000000-0000-4000-8000-000000000001";
+  const baseNotice = {
+    titulo: "Aviso de prueba",
+    mensaje: "Mensaje de prueba para el aviso",
+    prioridad: "NORMAL",
+    fecha_inicio: "2026-06-01T08:00",
+    fecha_fin: "2026-06-10T08:00"
+  };
+
+  it("createNotice con segmento DOMICILIO rechaza un domicilio de otro fraccionamiento", async () => {
+    const create = vi.fn();
+    withContext(
+      { id: ADMIN_ID, fraccionamiento_id: "fracc-A", rol: "ADMINISTRACION" },
+      {
+        households: { findById: vi.fn().mockResolvedValue({ id: DOM_B, fraccionamiento_id: "fracc-B" }) },
+        notices: { create }
+      }
+    );
+
+    await expect(
+      createNotice({ ...baseNotice, segmento: "DOMICILIO", segmento_domicilio_id: DOM_B })
+    ).rejects.toBeInstanceOf(ForbiddenError);
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it("updateNotice rechaza un aviso de otro fraccionamiento", async () => {
+    const update = vi.fn();
+    withContext(
+      { id: ADMIN_ID, fraccionamiento_id: "fracc-A", rol: "ADMINISTRACION" },
+      {
+        households: { findById: vi.fn() },
+        notices: {
+          findById: vi.fn().mockResolvedValue({ id: NOTICE_ID, fraccionamiento_id: "fracc-B" }),
+          update
+        }
+      }
+    );
+
+    await expect(
+      updateNotice({ ...baseNotice, id: NOTICE_ID, segmento: "TODOS" })
+    ).rejects.toBeInstanceOf(ForbiddenError);
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("updateNoticeStatus rechaza un aviso de otro fraccionamiento", async () => {
+    const updateStatus = vi.fn();
+    withContext(
+      { id: ADMIN_ID, fraccionamiento_id: "fracc-A", rol: "ADMINISTRACION" },
+      {
+        notices: {
+          findById: vi.fn().mockResolvedValue({ id: NOTICE_ID, fraccionamiento_id: "fracc-B" }),
+          updateStatus
+        }
+      }
+    );
+
+    await expect(
+      updateNoticeStatus({ id: NOTICE_ID, estatus: "INACTIVO" })
+    ).rejects.toBeInstanceOf(ForbiddenError);
+    expect(updateStatus).not.toHaveBeenCalled();
   });
 });
