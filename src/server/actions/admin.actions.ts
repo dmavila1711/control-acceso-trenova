@@ -10,6 +10,8 @@ import {
   resetUserPassword,
   sendInternalMessage,
   updateHouseholdStatus,
+  updateNotice,
+  updateNoticeStatus,
   updateUser,
   updateUserStatus,
   type ImportResult
@@ -97,6 +99,16 @@ export async function importHouseholdsAction(
 
 export async function createNoticeAction(formData: FormData) {
   await createNotice(formDataObject(formData));
+  revalidatePath("/admin/avisos");
+}
+
+export async function updateNoticeAction(formData: FormData) {
+  await updateNotice(formDataObject(formData));
+  revalidatePath("/admin/avisos");
+}
+
+export async function updateNoticeStatusAction(formData: FormData) {
+  await updateNoticeStatus(formDataObject(formData));
   revalidatePath("/admin/avisos");
 }
 

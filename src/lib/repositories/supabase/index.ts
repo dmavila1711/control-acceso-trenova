@@ -1,4 +1,5 @@
 import { AppError } from "@/lib/errors";
+import { noticeMatchesAudience } from "@/lib/notices/audience";
 import { zonedStartOfDay, zonedStartOfMonth } from "@/lib/time/zoned";
 import type { AppSupabaseClient } from "@/lib/supabase/server";
 import type {
@@ -17,8 +18,10 @@ import type {
   InvitationRepository,
   MessageRepository,
   MetricsRepository,
+  NoticeAudience,
   NoticeRepository,
   Repositories,
+  UpdateNoticeData,
   UserRepository
 } from "@/lib/repositories/contracts";
 import type { AccessResult, InvitationStatus, ValidationMethod, VisitType } from "@/types/domain";
@@ -464,7 +467,35 @@ class SupabaseNoticeRepository implements NoticeRepository {
     return row;
   }
 
-  async activeByFractionation(fraccionamientoId: string) {
+  async findById(id: string) {
+    const { data, error } = await this.supabase.from("avisos_generales").select("*").eq("id", id).maybeSingle();
+    if (error) raise(error.message);
+    return data;
+  }
+
+  async update(id: string, data: UpdateNoticeData) {
+    const { data: row, error } = await this.supabase
+      .from("avisos_generales")
+      .update(data)
+      .eq("id", id)
+      .select("*")
+      .single();
+    if (error) raise(error.message);
+    return row;
+  }
+
+  async updateStatus(id: string, estatus: "ACTIVO" | "INACTIVO") {
+    const { data: row, error } = await this.supabase
+      .from("avisos_generales")
+      .update({ estatus })
+      .eq("id", id)
+      .select("*")
+      .single();
+    if (error) raise(error.message);
+    return row;
+  }
+
+  private async activeRows(fraccionamientoId: string) {
     const now = new Date().toISOString();
     const { data, error } = await this.supabase
       .from("avisos_generales")
@@ -479,6 +510,17 @@ class SupabaseNoticeRepository implements NoticeRepository {
     // de texto dejaria los avisos ALTA al final.
     const peso: Record<string, number> = { ALTA: 0, NORMAL: 1, BAJA: 2 };
     return [...data].sort((a, b) => (peso[a.prioridad] ?? 1) - (peso[b.prioridad] ?? 1));
+  }
+
+  async activeByFractionation(fraccionamientoId: string) {
+    return this.activeRows(fraccionamientoId);
+  }
+
+  async activeForAudience(fraccionamientoId: string, audience: NoticeAudience) {
+    const rows = await this.activeRows(fraccionamientoId);
+    // Conjunto bounded (avisos activos del tenant): la segmentacion se aplica en
+    // el repositorio, no en el componente visual.
+    return rows.filter((row) => noticeMatchesAudience(row, audience));
   }
 
   async listByFractionation(fraccionamientoId: string) {

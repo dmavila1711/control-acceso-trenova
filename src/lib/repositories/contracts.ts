@@ -8,7 +8,7 @@ import type {
   NoticeRow,
   UserProfileRow
 } from "@/types/database";
-import type { AccessResult, InvitationStatus, ValidationMethod } from "@/types/domain";
+import type { AccessResult, InvitationStatus, UserRole, ValidationMethod } from "@/types/domain";
 
 export type CreateFractionationData = {
   nombre: string;
@@ -73,9 +73,30 @@ export type CreateNoticeData = {
   titulo: string;
   mensaje: string;
   prioridad: NoticeRow["prioridad"];
+  segmento: NoticeRow["segmento"];
+  segmento_calle?: string | null;
+  segmento_domicilio_id?: string | null;
   fecha_inicio: string;
   fecha_fin: string;
   created_by: string;
+};
+
+export type UpdateNoticeData = {
+  titulo?: string;
+  mensaje?: string;
+  prioridad?: NoticeRow["prioridad"];
+  segmento?: NoticeRow["segmento"];
+  segmento_calle?: string | null;
+  segmento_domicilio_id?: string | null;
+  fecha_inicio?: string;
+  fecha_fin?: string;
+};
+
+// Audiencia para resolver que avisos ve un usuario segun su rol/calle/domicilio.
+export type NoticeAudience = {
+  rol: UserRole;
+  calle?: string | null;
+  domicilioId?: string | null;
 };
 
 export type CreateMessageData = {
@@ -182,7 +203,14 @@ export interface AccessLogRepository {
 
 export interface NoticeRepository {
   create(data: CreateNoticeData): Promise<NoticeRow>;
+  findById(id: string): Promise<NoticeRow | null>;
+  update(id: string, data: UpdateNoticeData): Promise<NoticeRow>;
+  updateStatus(id: string, estatus: NoticeRow["estatus"]): Promise<NoticeRow>;
   activeByFractionation(fraccionamientoId: string): Promise<NoticeRow[]>;
+  // Avisos activos visibles para una audiencia (rol/calle/domicilio). La
+  // segmentacion se resuelve server-side; el aislamiento por fraccionamiento lo
+  // sigue garantizando RLS.
+  activeForAudience(fraccionamientoId: string, audience: NoticeAudience): Promise<NoticeRow[]>;
   listByFractionation(fraccionamientoId: string): Promise<NoticeRow[]>;
 }
 

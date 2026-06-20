@@ -14,8 +14,15 @@ export async function getColonoDashboard() {
     throw new AppError("Tu usuario no tiene domicilio asignado.");
   }
 
+  // El colono solo ve avisos dirigidos a todos, a colonos, a su calle o a su domicilio.
+  const household = await repositories.households.findById(actor.domicilio_id);
+
   const [notices, invitations, accessLogs, messages] = await Promise.all([
-    repositories.notices.activeByFractionation(actor.fraccionamiento_id),
+    repositories.notices.activeForAudience(actor.fraccionamiento_id, {
+      rol: "COLONO",
+      calle: household?.calle ?? null,
+      domicilioId: actor.domicilio_id
+    }),
     repositories.invitations.listByHousehold(actor.domicilio_id),
     repositories.accessLogs.listByHousehold(actor.domicilio_id),
     repositories.messages.listForRecipient(actor.id)
@@ -42,8 +49,9 @@ export async function getCasetaDashboard() {
     throw new AppError("Tu usuario no tiene fraccionamiento asignado.");
   }
 
+  // En caseta se muestran avisos para todos y los dirigidos al rol del operador.
   const [notices, todayInvitations, recentAccessLogs] = await Promise.all([
-    repositories.notices.activeByFractionation(actor.fraccionamiento_id),
+    repositories.notices.activeForAudience(actor.fraccionamiento_id, { rol: actor.rol }),
     repositories.invitations.listActiveToday(actor.fraccionamiento_id),
     repositories.accessLogs.recentByFractionation(actor.fraccionamiento_id, 10)
   ]);
