@@ -2,7 +2,33 @@ import { requireRole } from "@/lib/auth/session";
 import { createRepositories } from "@/lib/repositories/supabase";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { AppError } from "@/lib/errors";
+import { resolveTimeZone, zonedDayBounds } from "@/lib/time/zoned";
+import type {
+  AccessLogListFilters,
+  InvitationListFilters,
+  Repositories
+} from "@/lib/repositories/contracts";
 import type { AuditRow } from "@/types/database";
+
+// Convierte los filtros de fecha (YYYY-MM-DD) a limites de dia en la zona horaria
+// del fraccionamiento (igual que metricas y vigencias), no en UTC. Solo consulta
+// la configuracion si hay filtro de fecha.
+async function withTenantDateBounds<T extends { desde?: string; hasta?: string }>(
+  repositories: Repositories,
+  fraccionamientoId: string,
+  filters?: T
+): Promise<T | undefined> {
+  if (!filters || (!filters.desde && !filters.hasta)) {
+    return filters;
+  }
+  const config = await repositories.fractionations.getConfig(fraccionamientoId);
+  const timeZone = resolveTimeZone(config?.zona_horaria);
+  return {
+    ...filters,
+    desde: filters.desde ? zonedDayBounds(filters.desde, timeZone).start.toISOString() : undefined,
+    hasta: filters.hasta ? zonedDayBounds(filters.hasta, timeZone).end.toISOString() : undefined
+  };
+}
 
 async function adminRepositories() {
   const actor = await requireRole(["ADMINISTRACION"]);
@@ -58,24 +84,18 @@ export async function getAdminHouseholdDetail(id: string) {
   };
 }
 
-export async function getAdminInvitations(filters?: { estatus?: string; tipo?: string }) {
+export async function getAdminInvitations(filters?: InvitationListFilters) {
   const { repositories, fraccionamientoId } = await adminRepositories();
-  const rows = await repositories.invitations.listByFractionation(fraccionamientoId);
-  return rows.filter(
-    (row) =>
-      (!filters?.estatus || row.estatus === filters.estatus) &&
-      (!filters?.tipo || row.tipo_visita === filters.tipo)
-  );
+  // Filtrado en capa de query/repositorio (no en memoria); fechas en zona del tenant.
+  const scoped = await withTenantDateBounds(repositories, fraccionamientoId, filters);
+  return repositories.invitations.listByFractionation(fraccionamientoId, scoped);
 }
 
-export async function getAdminAccessLogs(filters?: { resultado?: string; metodo?: string }) {
+export async function getAdminAccessLogs(filters?: AccessLogListFilters) {
   const { repositories, fraccionamientoId } = await adminRepositories();
-  const rows = await repositories.accessLogs.listByFractionation(fraccionamientoId);
-  return rows.filter(
-    (row) =>
-      (!filters?.resultado || row.resultado === filters.resultado) &&
-      (!filters?.metodo || row.metodo_validacion === filters.metodo)
-  );
+  // Filtrado en capa de query/repositorio (no en memoria); fechas en zona del tenant.
+  const scoped = await withTenantDateBounds(repositories, fraccionamientoId, filters);
+  return repositories.accessLogs.listByFractionation(fraccionamientoId, scoped);
 }
 
 export async function getAdminNotices() {

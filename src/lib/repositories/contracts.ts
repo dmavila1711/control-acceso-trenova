@@ -86,6 +86,25 @@ export type CreateMessageData = {
   mensaje: string;
 };
 
+// Filtros aplicados en capa de query/repositorio (no en memoria) para listados de
+// administracion. Las fechas son ISO (desde inclusive, hasta inclusive a fin de dia).
+export type InvitationListFilters = {
+  estatus?: string;
+  tipo?: string;
+  domicilioId?: string;
+  desde?: string;
+  hasta?: string;
+};
+
+export type AccessLogListFilters = {
+  resultado?: string;
+  metodo?: string;
+  domicilioId?: string;
+  guardiaId?: string;
+  desde?: string;
+  hasta?: string;
+};
+
 export type AdminMetrics = {
   invitacionesHoy: number;
   invitacionesMes: number;
@@ -144,7 +163,7 @@ export interface InvitationRepository {
   findByQrHash(hash: string, fraccionamientoId: string): Promise<InvitationRow | null>;
   findByNumericHash(hash: string, fraccionamientoId: string): Promise<InvitationRow | null>;
   listByHousehold(domicilioId: string): Promise<InvitationRow[]>;
-  listByFractionation(fraccionamientoId: string): Promise<InvitationRow[]>;
+  listByFractionation(fraccionamientoId: string, filters?: InvitationListFilters): Promise<InvitationRow[]>;
   listActiveToday(fraccionamientoId: string): Promise<InvitationRow[]>;
   searchActive(fraccionamientoId: string, query: string): Promise<InvitationRow[]>;
   updateStatus(id: string, estatus: InvitationStatus, actorId?: string | null): Promise<InvitationRow>;
@@ -157,7 +176,7 @@ export interface InvitationRepository {
 export interface AccessLogRepository {
   create(data: CreateAccessLogData): Promise<AccessLogRow>;
   listByHousehold(domicilioId: string): Promise<AccessLogRow[]>;
-  listByFractionation(fraccionamientoId: string): Promise<AccessLogRow[]>;
+  listByFractionation(fraccionamientoId: string, filters?: AccessLogListFilters): Promise<AccessLogRow[]>;
   recentByFractionation(fraccionamientoId: string, limit?: number): Promise<AccessLogRow[]>;
 }
 
