@@ -10,7 +10,8 @@
     "lint": "eslint .",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "crear-usuario": "node scripts/crear-usuario.mjs"
+    "crear-usuario": "node scripts/crear-usuario.mjs",
+    "seed:lombardia": "node scripts/seed-lombardia.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
